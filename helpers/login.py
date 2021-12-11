@@ -20,8 +20,7 @@ common_headers = {
 
 
 async def login(session: ClientSession, id: str, pw: str) -> None:
-    async with session.get("http://etl.snu.ac.kr/", headers=common_headers):
-        pass
+    await session.get("http://etl.snu.ac.kr/", headers=common_headers)
     async with session.post(
         "https://sso.snu.ac.kr/safeidentity/modules/auth_idpwd",
         headers=common_headers,
@@ -36,14 +35,14 @@ async def login(session: ClientSession, id: str, pw: str) -> None:
             "Location"
         ):
             raise ValueError("Login Failed!")
-    content = await res.text()
+        content = await res.text()
     body = BeautifulSoup(content, "html.parser")
     data = {}
     for input in body.select("input"):
         data[input["name"]] = input["value"]
-    async with session.post(
+    body.decompose()
+    await session.post(
         "https://sso.snu.ac.kr/nls3/fcs",
         headers=common_headers,
         data=data,
-    ):
-        pass
+    )
