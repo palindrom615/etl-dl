@@ -78,23 +78,20 @@ class File(Downloadable):
 
 
 class Week(Downloadable):
-    week_title: Optional[str] = None
+    title: Optional[str] = None
     videos: list[Video] = []
     files: list[File] = []
 
-    def __init__(self, week_title: str, videos: list[Video], files: list[File]):
-        self.week_title = week_title
+    def __init__(self, title: str, videos: list[Video], files: list[File]):
+        self.title = title
         self.videos = videos
         self.files = files
 
     async def download(self, session: Session, location: str = "") -> None:
-        os.makedirs(f"{location}/{self.week_title}", exist_ok=True)
-        await gather(
-            *[
-                d.download(session, f"{location}/{self.week_title}")
-                for d in self.videos + self.files
-            ]
-        )
+        location = f"{location}/{self.title}"
+        os.makedirs(location, exist_ok=True)
+        downloadables = self.videos + self.files
+        await gather(*[d.download(session, location) for d in downloadables])
 
     @staticmethod
     def from_html(week_element: BeautifulSoup) -> "Week":
@@ -104,23 +101,21 @@ class Week(Downloadable):
             norm_filepath(f"w{week_num}-{week_title}") if week_title else f"w{week_num}"
         )
         vod_elements = week_element.select(".modtype_vod")
-        vod_ids = [vod_element.get("id").split("-")[1] for vod_element in vod_elements]
+        vod_ids = [elem.get("id").split("-")[1] for elem in vod_elements]
         videos = [Video(id) for id in vod_ids]
 
         file_elements = week_element.select(".modtype_ubfile")
-        file_urls = [
-            file_element.select_one("a")["href"] for file_element in file_elements
-        ]
+        file_urls = [elem.select_one("a")["href"] for elem in file_elements]
         files = [File(url) for url in file_urls]
         return Week(week_title, videos, files)
 
 
 class Course(Downloadable):
-    course_name: str = ""
+    title: str = ""
     weeks: list[Week] = []
 
-    def __init__(self, course_name: str, weeks: list[Week]) -> None:
-        self.course_name = course_name
+    def __init__(self, title: str, weeks: list[Week]) -> None:
+        self.title = title
         self.weeks = weeks
 
     @staticmethod
@@ -132,10 +127,9 @@ class Course(Downloadable):
             week_elements = soup.select("div.total_sections li.section")
         return Course(
             course_name,
-            [Week.from_html(week_element) for week_element in week_elements],
+            [Week.from_html(elem) for elem in week_elements],
         )
 
     async def download(self, session: Session, location: str = ".site") -> None:
-        await asyncio.gather(
-            *[w.download(session, f"{location}/{self.course_name}") for w in self.weeks]
-        )
+        location = f"{location}/{self.title}"
+        await asyncio.gather(*[w.download(session, location) for w in self.weeks])
