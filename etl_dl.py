@@ -5,20 +5,27 @@ import os
 from functools import partial
 
 from bs4 import BeautifulSoup
+from dotenv import dotenv_values
 
 from helpers.dl_week_material import dl_week_material, norm_filename
 from helpers.login import login
 
-if __name__ == "__main__":
-    session = login()
+
+def parse_args():
+    config = dotenv_values(".env")
+    MYSNU_ID = config.get("MYSNU_ID")
+    MYSNU_PASSWORD = config.get("MYSNU_PASSWORD")
 
     parser = argparse.ArgumentParser()
     parser.add_argument("course_id", type=int)
     parser.add_argument("weeks", type=int, nargs="*")
-    args = parser.parse_args()
+    parser.add_argument("--my-snu-id", type=str, nargs="?", default=MYSNU_ID)
+    parser.add_argument("--my-snu-pw", type=str, nargs="?", default=MYSNU_PASSWORD)
+    return parser.parse_args()
 
-    course_id = args.course_id
-    weeks = args.weeks
+
+def main(course_id: int, weeks: list[int], my_snu_id: str, my_snu_pw: str):
+    session = login(my_snu_id, my_snu_pw)
     res = session.get(
         "http://etl.snu.ac.kr/course/view.php",
         params={"id": course_id},
@@ -40,3 +47,8 @@ if __name__ == "__main__":
         pool.map(partial(dl_week_material, session), args)
 
     soup.decompose()
+
+
+if __name__ == "__main__":
+    args = vars(parse_args())
+    main(**args)

@@ -1,6 +1,5 @@
 import requests
 from bs4 import BeautifulSoup
-from dotenv import dotenv_values
 
 common_headers = {
     "Connection": "keep-alive",
@@ -20,8 +19,7 @@ common_headers = {
 }
 
 
-def login() -> requests.Session:
-    config = dotenv_values(".env")
+def login(id, pw) -> requests.Session:
     session = requests.Session()
 
     session.get("http://etl.snu.ac.kr/", headers=common_headers)
@@ -29,8 +27,8 @@ def login() -> requests.Session:
         "https://sso.snu.ac.kr/safeidentity/modules/auth_idpwd",
         headers=common_headers,
         data={
-            "si_id": config.get("MYSNU_ID"),
-            "si_pwd": config.get("MYSNU_PASSWORD"),
+            "si_id": id,
+            "si_pwd": pw,
             "si_redirect_address": "https://sso.snu.ac.kr/snu/ssologin_proc.jsp?si_redirect_address=http://etl.snu.ac.kr/",
         },
         allow_redirects=False,
