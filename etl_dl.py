@@ -1,6 +1,8 @@
 #!/usr/bin/env python3
 import argparse
+import asyncio
 
+from aiohttp.client import ClientSession
 from dotenv import dotenv_values
 
 from helpers.dl import dl
@@ -20,11 +22,13 @@ def parse_args():
     return parser.parse_args()
 
 
-def main(course_id: int, weeks: list[int], my_snu_id: str, my_snu_pw: str):
-    session = login(my_snu_id, my_snu_pw)
-    dl(session, course_id, weeks)
+async def main(course_id: int, weeks: list[int], my_snu_id: str, my_snu_pw: str):
+    async with ClientSession() as session:
+        await login(session, my_snu_id, my_snu_pw)
+        await dl(session, course_id, weeks)
 
 
 if __name__ == "__main__":
     args = vars(parse_args())
-    main(**args)
+    loop = asyncio.get_event_loop()
+    loop.run_until_complete(main(**args))

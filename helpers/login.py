@@ -1,4 +1,4 @@
-import requests
+from aiohttp import ClientSession
 from bs4 import BeautifulSoup
 
 common_headers = {
@@ -19,11 +19,10 @@ common_headers = {
 }
 
 
-def login(id, pw) -> requests.Session:
-    session = requests.Session()
-
-    session.get("http://etl.snu.ac.kr/", headers=common_headers)
-    res = session.post(
+async def login(session: ClientSession, id: str, pw: str) -> None:
+    async with session.get("http://etl.snu.ac.kr/", headers=common_headers):
+        pass
+    async with session.post(
         "https://sso.snu.ac.kr/safeidentity/modules/auth_idpwd",
         headers=common_headers,
         data={
@@ -32,18 +31,19 @@ def login(id, pw) -> requests.Session:
             "si_redirect_address": "https://sso.snu.ac.kr/snu/ssologin_proc.jsp?si_redirect_address=http://etl.snu.ac.kr/",
         },
         allow_redirects=False,
-    )
-    if res.headers.get("Location") is not None and "error" in res.headers.get(
-        "Location"
-    ):
-        raise ValueError("Login Failed!")
-    body = BeautifulSoup(res.content, "html.parser")
+    ) as res:
+        if res.headers.get("Location") is not None and "error" in res.headers.get(
+            "Location"
+        ):
+            raise ValueError("Login Failed!")
+    content = await res.text()
+    body = BeautifulSoup(content, "html.parser")
     data = {}
     for input in body.select("input"):
         data[input["name"]] = input["value"]
-    session.post(
+    async with session.post(
         "https://sso.snu.ac.kr/nls3/fcs",
         headers=common_headers,
         data=data,
-    )
-    return session
+    ):
+        pass

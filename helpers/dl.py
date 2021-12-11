@@ -1,10 +1,9 @@
-import multiprocessing
-from functools import partial
+import asyncio
 
+from aiohttp import ClientSession as Session
 from bs4 import BeautifulSoup
-from requests import Session
 
-from .downloadables import Downloadable, File, Video
+from .downloadables import File, Video, norm_filepath
 
 
 class Course:
@@ -12,7 +11,7 @@ class Course:
     videos: list[Video] = []
     files: list[File] = []
 
-    def __init__(self, soup: BeautifulSoup, weeks: list[str] = []):
+    def __init__(self, soup: BeautifulSoup, weeks: list[int] = []):
         self.course_name = soup.select_one(".coursename").get_text()
         parent_path = f".site/{self.course_name}"
 
@@ -24,7 +23,9 @@ class Course:
         for week_element in week_elements:
             week_num = week_element.get("id").replace("section-", "")
             week_title = week_element.get("aria-label")
-            dirname = f"{week_num}-{week_title}" if week_title else f"week-{week_num}"
+            dirname = norm_filepath(
+                f"{week_num}-{week_title}" if week_title else f"week-{week_num}"
+            )
             location = f"{parent_path}/{dirname}"
 
             vod_elements = week_element.select(".modtype_vod")
@@ -40,22 +41,17 @@ class Course:
             self.files.extend([File(url, location) for url in file_urls])
 
 
-def download(
-    session: Session,
-    downloadable: Downloadable,
-):
-    return downloadable.download(session)
+async def dl(session: Session, course_id: int, weeks: list[int]):
 
-
-def dl(session: Session, course_id: int, weeks: list[int]):
-    res = session.get(
+    async with session.get(
         "http://etl.snu.ac.kr/course/view.php",
         params={"id": course_id},
-    )
-    soup = BeautifulSoup(res.content, features="html.parser")
+    ) as res:
+        content = await res.text()
+    soup = BeautifulSoup(content, features="html.parser")
     course = Course(soup, weeks)
 
     soup.decompose()
-
-    with multiprocessing.Pool() as pool:
-        pool.map(partial(download, session), course.videos + course.files)
+    return await asyncio.gather(
+        *[d.download(session) for d in course.videos + course.files]
+    )
