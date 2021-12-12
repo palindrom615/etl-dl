@@ -7,6 +7,7 @@ from bs4 import BeautifulSoup
 from dotenv import dotenv_values
 
 from helpers.downloadables import Course
+from helpers.utils import REQ_HEADERS
 
 
 async def login(session: ClientSession, id: str, pw: str) -> None:
@@ -20,9 +21,7 @@ async def login(session: ClientSession, id: str, pw: str) -> None:
         },
         allow_redirects=False,
     ) as res:
-        if res.headers.get("Location") is not None and "error" in res.headers.get(
-            "Location"
-        ):
+        if res.headers.get("Location") and "error" in res.headers.get("Location"):
             raise ValueError("Login Failed!")
         content = await res.text()
     body = BeautifulSoup(content, "html.parser")
@@ -38,8 +37,7 @@ async def login(session: ClientSession, id: str, pw: str) -> None:
 
 async def download(session: ClientSession, course_id: int, weeks: list[int]):
     async with session.get(
-        "http://etl.snu.ac.kr/course/view.php",
-        params={"id": course_id},
+        "http://etl.snu.ac.kr/course/view.php", params={"id": course_id}
     ) as res:
         content = await res.text()
     soup = BeautifulSoup(content, features="html.parser")
@@ -62,23 +60,7 @@ def parse_args():
 
 
 async def main(course_id: int, weeks: list[int], my_snu_id: str, my_snu_pw: str):
-    common_headers = {
-        "Connection": "keep-alive",
-        "Cache-Control": "max-age=0",
-        "Upgrade-Insecure-Requests": "1",
-        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/88.0.4324.182 Safari/537.36 Edg/88.0.705.81",
-        "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.9",
-        "Referer": "http://etl.snu.ac.kr/course/view.php?id=197381",
-        "Accept-Language": "en-US,en;q=0.9,ko;q=0.8,ja;q=0.7",
-        "Origin": "https://etl.snu.ac.kr",
-        "Content-Type": "application/x-www-form-urlencoded",
-        "Sec-Fetch-Site": "same-site",
-        "Sec-Fetch-Mode": "navigate",
-        "Sec-Fetch-User": "?1",
-        "Sec-Fetch-Dest": "document",
-        "Referer": "https://etl.snu.ac.kr/",
-    }
-    async with ClientSession(headers=common_headers) as session:
+    async with ClientSession(headers=REQ_HEADERS) as session:
         await login(session, my_snu_id, my_snu_pw)
         await download(session, course_id, weeks)
 
