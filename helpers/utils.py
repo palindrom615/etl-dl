@@ -1,6 +1,7 @@
 import asyncio
 import re
 import unicodedata
+import multiprocessing
 
 REQ_HEADERS = {
     "Connection": "keep-alive",
@@ -17,7 +18,7 @@ REQ_HEADERS = {
     "Sec-Fetch-Dest": "document",
     "Referer": "https://etl.snu.ac.kr/",
 }
-CONCURRENT_DOWNLOADS = 8
+CONCURRENT_DOWNLOADS = multiprocessing.cpu_count()
 semaphore = asyncio.Semaphore(CONCURRENT_DOWNLOADS)
 
 
