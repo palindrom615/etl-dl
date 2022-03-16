@@ -43,7 +43,7 @@ class Video(Downloadable):
         async with session.get(viewer_url, params=params) as response:
             text = await response.text()
         hls_pattern = "(http:\/\/etlstream.snu.ac.kr:1935.*playlist\.m3u8)"
-        hls = re.match(hls_pattern, text).group(0)
+        hls = re.search(hls_pattern, text).group(0)
         return hls
 
     @staticmethod
